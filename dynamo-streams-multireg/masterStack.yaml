@@ -2,22 +2,18 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Parameters: 
-  EnvType: 
-    Description: Environment type.
-    Default: primary
+  DynamoDBReplicationRegion: 
+    Description: A region where replication session table located
+    Default: us-west-2
     Type: String
-    AllowedValues: 
-      - primary
-      - secondary
-    ConstraintDescription: must specify primary or secondary.
-
-Conditions:
-  CreatePrimaryResources: !Equals [ !Ref EnvType, primary ]
+  DynamoDBReplicationTable: 
+    Description: Replication table name
+    Default: dynamostreams.sessionstorage
+    Type: String
 
 Resources:
   LambdaRole:
     Type: "AWS::IAM::Role"
-    Condition: CreatePrimaryResources
     Properties:
       AssumeRolePolicyDocument: 
         Version: "2012-10-17"
@@ -36,7 +32,6 @@ Resources:
   
   DynamoDBTable:
     Type: AWS::DynamoDB::Table
-    Condition: CreatePrimaryResources
     Properties:
       TableName: dynamostreams.sessionstorage
       AttributeDefinitions:
@@ -52,17 +47,22 @@ Resources:
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
   
-  # HandleMultizoneDynamoDBReplication:
-  #   Type: AWS::Serverless::Function
-  #   Condition: CreatePrimaryResources
-  #   Properties:
-  #     Handler: replicator.handler
-  #     Runtime: nodejs6.10
-  #     Role: !If [CreatePrimaryResources, !GetAtt LambdaRole.Arn, "arn:aws:iam::217509956792:role/lambda-dynamodb-execution-ro-man"]
-  #     Events:
-  #       Stream:
-  #         Type: DynamoDB
-  #         Properties:
-  #           Stream: !If [CreatePrimaryResources, !GetAtt DynamoDBTable.StreamArn, ""]
-  #           BatchSize: 100
-  #           StartingPosition: TRIM_HORIZON
+  HandleMultizoneDynamoDBReplication:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: replicator.handler
+      Runtime: nodejs6.10
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables: 
+          REPLICATE_REGION:
+            Ref: DynamoDBReplicationRegion
+          REPLICATE_TABLE:
+            Ref: DynamoDBReplicationTable
+      Events:
+        Stream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt DynamoDBTable.StreamArn
+            BatchSize: 100
+            StartingPosition: TRIM_HORIZON
