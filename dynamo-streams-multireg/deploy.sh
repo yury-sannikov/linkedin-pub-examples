@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
 rm ./masterStack-pkg.yaml
-#rm ./reserveStack-pkg.yaml
+
+./node_modules/.bin/webpack --config ./webpack.config.babel.js --bail
 
 aws cloudformation package \
    --template-file ./masterStack.yaml \
    --output-template-file masterStack-pkg.yaml \
    --s3-bucket articles-cf
-
-# aws cloudformation package \
-#    --template-file ./reserveStack.yaml \
-#    --output-template-file reserveStack-pkg.yaml \
-#    --s3-bucket articles-cf
 
 aws cloudformation deploy \
   --template-file ./masterStack-pkg.yaml \

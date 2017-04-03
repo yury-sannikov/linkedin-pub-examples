@@ -50,7 +50,7 @@ Resources:
   HandleMultizoneDynamoDBReplication:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: replicator.handler
+      Handler: replicator.default
       Runtime: nodejs6.10
       Role: !GetAtt LambdaRole.Arn
       Environment:
